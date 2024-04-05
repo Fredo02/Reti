@@ -46,9 +46,9 @@ void send_broadcast(int sockfd, Packet packet) {
     sprintf(id, "%d", packet.node_id);
     id[strlen(id)] = '\0';
     sprintf(value, "%d", packet.value);
-    value[strlen(value)] = '\0';
+    id[strlen(value)] = '\0';
     sprintf(sequence_number, "%d", packet.sequence_number);
-    sequence_number[strlen(sequence_number)] = '\0';
+    id[strlen(sequence_number)] = '\0';
 
     strcat(buffer, id);
     strcat(buffer, ":");
@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
     memset((char*)&new_srv_addr, 0, sizeof(new_srv_addr));
     new_srv_addr.sin_family = AF_INET;
     new_srv_addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
-    new_srv_addr.sin_port = htons(PORT);   
+    new_srv_addr.sin_port = htons(PORT);    
     
     ret = bind(new_sockfd, (struct sockaddr *)&new_srv_addr, sizeof(new_srv_addr));
     if(ret < 0){
