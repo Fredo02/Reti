@@ -9,10 +9,10 @@
 #include <sys/ipc.h>
 #include <errno.h>
 
-#define N 100 // Numero binari
-#define T 2000 // Millisecondi di permanenza
-#define Tmin 5000 // Millisecondi minimi prima del prossimo treno
-#define Tmax 19000 // Millisecondi massimi prima del prossimo treno
+#define N 10 // Numero binari
+#define T 2 // Millisecondi di permanenza
+#define Tmin 5 // Millisecondi minimi prima del prossimo treno
+#define Tmax 19 // Millisecondi massimi prima del prossimo treno
 
 int attesa = 0; // Treni in attesa di passare sul binario
 int passato = 0; // Treni che hanno attraversato
@@ -93,9 +93,7 @@ void transit(void* b){
 
     msleep(t);
 
-    for(int i = 0; i < N; i++){
-        pthread_mutex_lock(&mutex_attraversano);
-        attesa--;
+    for(int i = 0; i < N; i++){    
         struct sembuf sem_op = {i, -1, 0};
 
         ret = semop(binari, &sem_op, 1);
@@ -104,9 +102,17 @@ void transit(void* b){
             exit(1);
         }
 
+        attesa--;
+
+        pthread_mutex_lock(&mutex_attraversano);
         presente++;
         printf("\nAttesa: %d\nPresenti: %d\nPassati: %d\n", attesa, presente, passato);
         msleep(T);
+        pthread_mutex_unlock(&mutex_attraversano);
+
+        presente--;
+        passato++;
+        printf("\nAttesa: %d\nPresenti: %d\nPassati: %d\n", attesa, presente, passato);
 
         sem_op.sem_op = 1;
         ret = semop(binari, &sem_op, 1);
@@ -114,11 +120,6 @@ void transit(void* b){
             perror("Errore semop");
             exit(1);
         }
-
-        presente--;
-        passato++;
-        printf("\nAttesa: %d\nPresenti: %d\nPassati: %d\n", attesa, presente, passato);
-        pthread_mutex_unlock(&mutex_attraversano);
     }
 
     pthread_exit(0);
@@ -145,8 +146,8 @@ int main(){
         struct seminfo* __buf;
     };
 
-    // Inizializzazione set semafori a 0;
-    union semun sem_val = {.val = 0};
+    // Inizializzazione set semafori a N;
+    union semun sem_val = {.val = N};
     for(int i = 0; i < N; i++){
         ret = semctl(binari, i, SETVAL, sem_val);
         if(ret == -1){
