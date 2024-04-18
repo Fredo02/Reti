@@ -24,9 +24,9 @@ typedef struct Payload {
 } Payload;
 
 typedef struct MessageList{
-    MessageList* left;
+    struct MessageList* left;
     Message* msg;
-    MessageList* right;
+    struct MessageList* right;
 } MessageList;
 
 Message * prepare_message(Payload * payload);

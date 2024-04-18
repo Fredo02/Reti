@@ -25,9 +25,11 @@ int id = 0; // ID treni
 
 typedef struct ListaTreni{
     int id;
-    ListaTreni* next;
-    ListaTreni* before;
+    struct ListaTreni* next;
+    struct ListaTreni* before;
 } ListaTreni;
+
+ListaTreni lista;
 
 void createList(ListaTreni* lista){
     lista = malloc(sizeof(struct ListaTreni));
@@ -48,14 +50,15 @@ ListaTreni insertLista(ListaTreni* lista, int id){
     ListaTreni l;
     createList(&l);
     insertID(&l, id);
-    l.next = &lista;
+    l.next = lista;
     return l;
 }
 
-void transit(int binari){
+void transit(void* b){
     int ret;
     ListaTreni* l;
     createList(l);
+    int binari = *(int*)b;
 
     pthread_mutex_lock(&mutex_id);
     insertID(l, id);
@@ -92,8 +95,6 @@ void transit(int binari){
         pthread_mutex_unlock(&mutex_attraversano);
     }
 }
-
-ListaTreni lista;
 
 int main(){
     int ret;
@@ -147,7 +148,7 @@ int main(){
     while(1){
         pthread_t thread;
 
-        ret = pthread_create(&thread, NULL, transit, binari);
+        ret = pthread_create(&thread, NULL, (void*) transit, &binari);
         if(ret != 0){
             perror("Errore pthread_create");
             printf("\nErrore create thread %d\n", id);
