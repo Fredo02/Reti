@@ -7,11 +7,12 @@
 #include <sys/sem.h>
 #include <sys/types.h>
 #include <sys/ipc.h>
+#include <errno.h>
 
-#define N 6 // Numero binari
-#define T 5 // Millisecondi di permanenza
-#define Tmin 3 // Millisecondi minimi prima del prossimo treno
-#define Tmax 7 // Millisecondi massimi prima del prossimo treno
+#define N 100 // Numero binari
+#define T 2000 // Millisecondi di permanenza
+#define Tmin 5000 // Millisecondi minimi prima del prossimo treno
+#define Tmax 19000 // Millisecondi massimi prima del prossimo treno
 
 int attesa = 0; // Treni in attesa di passare sul binario
 int passato = 0; // Treni che hanno attraversato
@@ -32,7 +33,6 @@ typedef struct ListaTreni{
 ListaTreni lista;
 
 void createList(ListaTreni* lista){
-    lista = malloc(sizeof(struct ListaTreni));
     lista->id = 0;
     lista->before = NULL;
     lista->next = NULL;
@@ -54,21 +54,44 @@ ListaTreni insertLista(ListaTreni* lista, int id){
     return l;
 }
 
+int msleep(long msec){
+    struct timespec ts;
+    int res;
+
+    if (msec < 0){
+        errno = EINVAL;
+        return -1;
+    }
+
+    ts.tv_sec = msec / 1000;
+    ts.tv_nsec = (msec % 1000) * 1000000;
+
+    do{
+        res = nanosleep(&ts, &ts);
+    } while (res && errno == EINTR);
+
+    return res;
+}
+
 void transit(void* b){
     int ret;
-    ListaTreni* l;
-    createList(l);
+    ListaTreni l;
+    createList(&l);
     int binari = *(int*)b;
+    int t = rand() % (Tmax - Tmin + 1) + Tmin;
 
     pthread_mutex_lock(&mutex_id);
-    insertID(l, id);
+    insertID(&l, id);
     id++;
-    lista = insertLista(l, id);
+    lista = insertLista(&l, id);
     pthread_mutex_unlock(&mutex_id);
 
     pthread_mutex_lock(&mutex_attesa);
     attesa++;
+    printf("\nAttesa: %d\nPresenti: %d\nPassati: %d\n", attesa, presente, passato);
     pthread_mutex_unlock(&mutex_attesa);
+
+    msleep(t);
 
     for(int i = 0; i < N; i++){
         pthread_mutex_lock(&mutex_attraversano);
@@ -82,6 +105,8 @@ void transit(void* b){
         }
 
         presente++;
+        printf("\nAttesa: %d\nPresenti: %d\nPassati: %d\n", attesa, presente, passato);
+        msleep(T);
 
         sem_op.sem_op = 1;
         ret = semop(binari, &sem_op, 1);
@@ -91,12 +116,16 @@ void transit(void* b){
         }
 
         presente--;
-        passato++;        
+        passato++;
+        printf("\nAttesa: %d\nPresenti: %d\nPassati: %d\n", attesa, presente, passato);
         pthread_mutex_unlock(&mutex_attraversano);
     }
+
+    pthread_exit(0);
 }
 
 int main(){
+    srand(time(NULL));
     int ret;
 
     createList(&lista);
