@@ -24,36 +24,6 @@ static pthread_mutex_t mutex_attraversano = PTHREAD_MUTEX_INITIALIZER; // Mutex 
 
 int id = 0; // ID treni
 
-typedef struct ListaTreni{
-    int id;
-    struct ListaTreni* next;
-    struct ListaTreni* before;
-} ListaTreni;
-
-ListaTreni lista;
-
-void createList(ListaTreni* lista){
-    lista->id = 0;
-    lista->before = NULL;
-    lista->next = NULL;
-}
-
-void insertID(ListaTreni* lista, int id){
-    if(lista == NULL){
-        perror("Lista non inizializzata");
-        exit(1);
-    }
-    lista->id = id;
-}
-
-ListaTreni insertLista(ListaTreni* lista, int id){
-    ListaTreni l;
-    createList(&l);
-    insertID(&l, id);
-    l.next = lista;
-    return l;
-}
-
 int msleep(long msec){
     struct timespec ts;
     int res;
@@ -75,15 +45,11 @@ int msleep(long msec){
 
 void transit(void* b){
     int ret;
-    ListaTreni l;
-    createList(&l);
     int binari = *(int*)b;
     int t = rand() % (Tmax - Tmin + 1) + Tmin;
 
     pthread_mutex_lock(&mutex_id);
-    insertID(&l, id);
     id++;
-    lista = insertLista(&l, id);
     pthread_mutex_unlock(&mutex_id);
 
     pthread_mutex_lock(&mutex_attesa);
@@ -91,9 +57,8 @@ void transit(void* b){
     printf("\nAttesa: %d\nPresenti: %d\nPassati: %d\n", attesa, presente, passato);
     pthread_mutex_unlock(&mutex_attesa);
 
-    msleep(t);
-
-    for(int i = 0; i < N; i++){    
+    for(int i = 0; i < N; i++){
+        msleep(t);
         struct sembuf sem_op = {i, -1, 0};
 
         ret = semop(binari, &sem_op, 1);
@@ -128,8 +93,6 @@ void transit(void* b){
 int main(){
     srand(time(NULL));
     int ret;
-
-    createList(&lista);
 
     // Creazione set semafori
     int binari = semget(IPC_PRIVATE, N, IPC_CREAT | IPC_EXCL | 0600);
